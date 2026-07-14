@@ -55,15 +55,21 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 3a. Validate FetchContent cache
-      #     Self-heal stale caches restored from older layouts where a source
-      #     dir exists but is not a git checkout (missing .git metadata).
+      #     Self-heal stale googleapis cache entries where the .git directory
+      #     exists on disk but is internally corrupt (empty object store, stale
+      #     worktree reference, etc.).  A directory-existence check is not
+      #     sufficient; run "git rev-parse HEAD" to confirm the repo is usable.
+      #     Only googleapis-src and googleapis-subbuild are removed so that all
+      #     other cached dependencies (grpc, spdlog, …) remain intact.
       # -----------------------------------------------------------------------
       - name: Validate FetchContent cache
         run: |
           FC_DIR="${{ github.workspace }}/.fetchcontent"
-          if [ -d "$FC_DIR/googleapis-src" ] && [ ! -d "$FC_DIR/googleapis-src/.git" ]; then
-            echo "Invalid googleapis FetchContent cache (missing .git); purging cache directory"
-            rm -rf "$FC_DIR"
+          if [ -d "$FC_DIR/googleapis-src" ]; then
+            if ! git -C "$FC_DIR/googleapis-src" rev-parse HEAD >/dev/null 2>&1; then
+              echo "Invalid googleapis git state (rev-parse failed); purging googleapis-src and googleapis-subbuild"
+              rm -rf "$FC_DIR/googleapis-src" "$FC_DIR/googleapis-subbuild"
+            fi
           fi
 
       # -----------------------------------------------------------------------
