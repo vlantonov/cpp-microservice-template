@@ -64,7 +64,8 @@ FetchContent_Declare(
     googleapis
     GIT_REPOSITORY https://github.com/googleapis/googleapis
     GIT_TAG        ade23d0bca40f6e9f4fb23a51a39cf46e0e9e1d2
-    GIT_SHALLOW    TRUE
+    # GIT_SHALLOW is intentionally omitted: shallow clones cannot fetch
+    # arbitrary commit SHAs from GitHub (only advertised tags/branches work).
     DOWNLOAD_ONLY  YES
 )
 
