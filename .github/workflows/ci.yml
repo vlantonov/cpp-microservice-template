@@ -54,6 +54,19 @@ jobs:
             fetchcontent-${{ runner.os }}-
 
       # -----------------------------------------------------------------------
+      # 3a. Validate FetchContent cache
+      #     Self-heal stale caches restored from older layouts where a source
+      #     dir exists but is not a git checkout (missing .git metadata).
+      # -----------------------------------------------------------------------
+      - name: Validate FetchContent cache
+        run: |
+          FC_DIR="${{ github.workspace }}/.fetchcontent"
+          if [ -d "$FC_DIR/googleapis-src" ] && [ ! -d "$FC_DIR/googleapis-src/.git" ]; then
+            echo "Invalid googleapis FetchContent cache (missing .git); purging cache directory"
+            rm -rf "$FC_DIR"
+          fi
+
+      # -----------------------------------------------------------------------
       # 4. CMake Configure
       #    CMAKE_CXX_CLANG_TIDY is NOT set here; static analysis runs separately
       #    in step 7 to avoid analysing generated proto TUs.
