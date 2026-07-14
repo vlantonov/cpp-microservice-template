@@ -1,0 +1,21 @@
+---
+# clang-tidy configuration for src/ (generated proto headers are excluded via CI step)
+Checks: >
+  -*,
+  readability-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  performance-*
+
+# Only report diagnostics for our handwritten sources, not generated headers.
+HeaderFilterRegex: '^.*/src/.*'
+
+CheckOptions:
+  - key:   readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key:   readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key:   readability-identifier-naming.VariableCase
+    value: lower_case
+  - key:   modernize-use-trailing-return-type.Enabled
+    value: false

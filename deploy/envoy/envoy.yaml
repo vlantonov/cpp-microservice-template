@@ -1,0 +1,78 @@
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
+
+static_resources:
+
+  listeners:
+    - name: listener_rest
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 8080
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: local_service
+                      domains: ["*"]
+                      routes:
+                        # /healthz answered directly by Envoy (AC-6) — no backend hop.
+                        - match:
+                            path: "/healthz"
+                          direct_response:
+                            status: 200
+                            body:
+                              inline_string: '{"status":"ok"}'
+                        # All other paths: transcoded to gRPC backend.
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: grpc_hello
+                http_filters:
+                  - name: envoy.filters.http.grpc_json_transcoder
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_json_transcoder.v3.GrpcJsonTranscoder
+                      # Descriptor set is mounted from the CMake build output (§4).
+                      proto_descriptor: /etc/envoy/proto.pb
+                      services:
+                        - hello.v1.HelloService
+                      print_options:
+                        add_whitespace: true
+                        always_print_primitive_fields: true
+                        preserve_proto_field_names: false
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: grpc_hello
+      connect_timeout: 5s
+      type: LOGICAL_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            # Force h2c (cleartext HTTP/2) to the backend gRPC service.
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: grpc_hello
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      # docker-compose service name resolves via embedded DNS.
+                      address: hello
+                      port_value: 50051

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package hello.v1;
+
+import "google/api/annotations.proto";
+
+// HelloService provides greeting RPCs for the hello microservice.
+service HelloService {
+
+  // SayHello is a unary RPC that returns a greeting.
+  // REST binding: POST /v1/hello  body: HelloRequest JSON
+  rpc SayHello(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      post: "/v1/hello"
+      body: "*"
+    };
+  }
+
+  // StreamHello is a server-side streaming RPC.
+  // Defined per FR-1; not implemented this iteration.
+  rpc StreamHello(HelloRequest) returns (stream HelloResponse);
+}
+
+// HelloRequest is the request message for SayHello / StreamHello.
+message HelloRequest {
+  string message = 1;
+}
+
+// HelloResponse is the response message for SayHello / StreamHello.
+message HelloResponse {
+  string message = 1;
+}

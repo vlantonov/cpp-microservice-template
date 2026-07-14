@@ -1,0 +1,17 @@
+# FetchContent download/build cache — preserved across builds for speed.
+.fetchcontent/
+
+# CMake build directories
+build/
+
+# Generated protobuf sources — never committed.
+generated/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# clangd compile-commands symlink
+compile_commands.json
