@@ -15,6 +15,10 @@ set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.fetchcontent"
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)   # show fetch progress in CI (§12)
+# Skip git update step when content is already present in the cache dir.
+# This prevents CI cache-restore failures where the .git directory is
+# incomplete after actions/cache restoration.
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 # ---------------------------------------------------------------------------
 # Dependency option overrides — MUST be set before FetchContent_MakeAvailable
@@ -60,6 +64,7 @@ FetchContent_Declare(
     googleapis
     GIT_REPOSITORY https://github.com/googleapis/googleapis
     GIT_TAG        ade23d0bca40f6e9f4fb23a51a39cf46e0e9e1d2
+    GIT_SHALLOW    TRUE
     DOWNLOAD_ONLY  YES
 )
 
