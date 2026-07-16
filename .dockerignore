@@ -1,0 +1,20 @@
+# Exclude host build artifacts so they don't contaminate the Docker build context.
+# CMakeCache.txt from the local build encodes the host source path
+# (/home/user/.../cpp-microservice-template) which conflicts with the Docker
+# working directory (/app), causing cmake --preset to fail with a source
+# directory mismatch error.
+
+# CMake build trees
+build/
+
+# Conan-generated preset file (regenerated inside the container by conan install)
+CMakeUserPresets.json
+
+# Old FetchContent cache (no longer used; gitignored but may exist on disk)
+.fetchcontent/
+
+# Editor / IDE artefacts
+.vscode/
+.idea/
+*.swp
+*.swo
