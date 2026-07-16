@@ -71,8 +71,9 @@ Prometheus metrics, and OpenTelemetry distributed tracing.
 
 ```bash
 # Install Conan dependencies (first run downloads/builds — takes a while)
-conan install . --profile conan/profiles/linux-clang18 --build=missing \
-    -s build_type=Debug
+conan install . --profile:host conan/profiles/linux-clang18 \
+              --profile:build conan/profiles/linux-clang18 \
+              --build=missing -s:h build_type=Debug -s:b build_type=Debug
 
 # Configure
 cmake --preset conan-debug
@@ -91,8 +92,9 @@ ctest --test-dir build/Debug --output-on-failure
 
 ```bash
 # Install Conan dependencies and configure for Release
-conan install . --profile conan/profiles/linux-clang18 --build=missing \
-    -s build_type=Release
+conan install . --profile:host conan/profiles/linux-clang18 \
+              --profile:build conan/profiles/linux-clang18 \
+              --build=missing -s:h build_type=Release -s:b build_type=Release
 cmake --preset conan-release
 
 # Build the proto descriptor set first (needed by Envoy)

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   # ---------------------------------------------------------------------------
@@ -35,7 +33,8 @@ services:
     volumes:
       - ./deploy/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
       # Mount the generated proto descriptor set (produced by cmake --build).
-      - ./build/release/proto.pb:/etc/envoy/proto.pb:ro
+      # Path matches cmake_layout output: build/Release/ (capital R).
+      - ./build/Release/proto.pb:/etc/envoy/proto.pb:ro
     command: ["envoy", "-c", "/etc/envoy/envoy.yaml"]
     depends_on:
       - hello

@@ -73,9 +73,11 @@ jobs:
       - name: Conan install
         run: |
           conan install . \
-            --profile conan/profiles/linux-clang18 \
+            --profile:host conan/profiles/linux-clang18 \
+            --profile:build conan/profiles/linux-clang18 \
             --build=missing \
-            -s build_type=${{ matrix.build_type }}
+            -s:h build_type=${{ matrix.build_type }} \
+            -s:b build_type=${{ matrix.build_type }}
 
       # -----------------------------------------------------------------------
       # 6. CMake Configure (via Conan-generated preset)

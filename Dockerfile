@@ -14,6 +14,7 @@ FROM ubuntu:24.04 AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
+        make \
         clang \
         python3-pip \
         git \
@@ -36,9 +37,11 @@ COPY . .
 # package is available for this platform).
 COPY conan/profiles/linux-clang18 /root/.conan2/profiles/default
 RUN conan install . \
-        --profile conan/profiles/linux-clang18 \
+        --profile:host conan/profiles/linux-clang18 \
+        --profile:build conan/profiles/linux-clang18 \
         --build=missing \
-        -s build_type=Release
+        -s:h build_type=Release \
+        -s:b build_type=Release
 
 # Configure and build in Release mode using the Conan-generated preset.
 RUN cmake --preset conan-release \
