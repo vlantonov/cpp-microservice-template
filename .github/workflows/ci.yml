@@ -27,6 +27,9 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 2. Install system packages
+      #    libssl-dev / zlib1g-dev / pkg-config are retained because Conan
+      #    may build some deps from source (--build=missing) and those
+      #    recipes rely on system OpenSSL / zlib.
       # -----------------------------------------------------------------------
       - name: Install system packages
         run: |
@@ -36,63 +39,64 @@ jobs:
             ninja-build \
             clang \
             clang-tidy \
+            python3-pip \
             libssl-dev \
             pkg-config \
             zlib1g-dev \
             ca-certificates
 
       # -----------------------------------------------------------------------
-      # 3. Restore FetchContent cache
-      #    Key includes CMakeLists.txt hash to auto-invalidate on dep changes.
+      # 3. Install Conan 2
       # -----------------------------------------------------------------------
-      - name: Restore FetchContent cache
+      - name: Install Conan
+        run: |
+          pip3 install "conan>=2.0"
+          conan profile detect --force
+
+      # -----------------------------------------------------------------------
+      # 4. Cache Conan package store
+      #    Key includes conanfile.py hash to auto-invalidate on dep changes.
+      # -----------------------------------------------------------------------
+      - name: Cache Conan packages
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/.fetchcontent
-          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          path: ~/.conan2/p
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
           restore-keys: |
-            fetchcontent-${{ runner.os }}-
+            conan-${{ runner.os }}-
 
       # -----------------------------------------------------------------------
-      # 3a. Validate FetchContent cache
-      #     Self-heal stale googleapis cache entries where the .git directory
-      #     exists on disk but is internally corrupt (empty object store, stale
-      #     worktree reference, etc.).  A directory-existence check is not
-      #     sufficient; run "git rev-parse HEAD" to confirm the repo is usable.
-      #     Only googleapis-src and googleapis-subbuild are removed so that all
-      #     other cached dependencies (grpc, spdlog, …) remain intact.
+      # 5. Install dependencies via Conan
+      #    Generates build/<build_type>/generators/conan_toolchain.cmake
+      #    and CMakeUserPresets.json in the project root.
       # -----------------------------------------------------------------------
-      - name: Validate FetchContent cache
+      - name: Conan install
         run: |
-          FC_DIR="${{ github.workspace }}/.fetchcontent"
-          if [ -d "$FC_DIR/googleapis-src" ]; then
-            if ! git -C "$FC_DIR/googleapis-src" rev-parse HEAD >/dev/null 2>&1; then
-              echo "Invalid googleapis git state (rev-parse failed); purging googleapis-src and googleapis-subbuild"
-              rm -rf "$FC_DIR/googleapis-src" "$FC_DIR/googleapis-subbuild"
-            fi
-          fi
+          conan install . \
+            --profile conan/profiles/linux-clang18 \
+            --build=missing \
+            -s build_type=${{ matrix.build_type }}
 
       # -----------------------------------------------------------------------
-      # 4. CMake Configure
-      #    CMAKE_CXX_CLANG_TIDY is NOT set here; static analysis runs separately
-      #    in step 7 to avoid analysing generated proto TUs.
+      # 6. CMake Configure (via Conan-generated preset)
+      #    CMAKE_CXX_CLANG_TIDY is NOT set here; static analysis runs
+      #    separately in step 9 to avoid analysing generated proto TUs.
       # -----------------------------------------------------------------------
       - name: Configure
         run: |
-          cmake -B build/${{ matrix.build_type }} \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-                -DCMAKE_CXX_COMPILER=clang++ \
-                -DFETCHCONTENT_BASE_DIR=${{ github.workspace }}/.fetchcontent
+          BUILD_PRESET="conan-$(echo '${{ matrix.build_type }}' | tr '[:upper:]' '[:lower:]')"
+          cmake --preset "${BUILD_PRESET}"
 
       # -----------------------------------------------------------------------
-      # 5. Build
+      # 7. Build
       # -----------------------------------------------------------------------
       - name: Build
-        run: cmake --build build/${{ matrix.build_type }} --parallel
+        run: |
+          BUILD_PRESET="conan-$(echo '${{ matrix.build_type }}' | tr '[:upper:]' '[:lower:]')"
+          cmake --build --preset "${BUILD_PRESET}" --parallel
 
       # -----------------------------------------------------------------------
-      # 6. Test
+      # 8. Test
       # -----------------------------------------------------------------------
       - name: Test
         run: |
@@ -101,8 +105,9 @@ jobs:
                 --parallel "$(nproc)"
 
       # -----------------------------------------------------------------------
-      # 7. clang-tidy (Debug variant only)
+      # 9. clang-tidy (Debug variant only)
       #    Scoped to src/ to exclude generated proto headers and third-party code.
+      #    compile_commands.json lives in build/Debug (set by cmake_layout).
       # -----------------------------------------------------------------------
       - name: clang-tidy
         if: matrix.build_type == 'Debug'

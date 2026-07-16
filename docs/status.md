@@ -52,7 +52,7 @@ Non-functional requirements covered:
 | NFR    | Description                                                    | Status    |
 |--------|----------------------------------------------------------------|-----------|
 | NFR-1  | CMake ≥ 3.21                                                   | Verified  |
-| NFR-2  | FetchContent dependency management                             | Verified  |
+| NFR-2  | Conan 2 dependency management                                  | Verified  |
 | NFR-3  | Clean build under `-Wall -Wextra -Wpedantic`                   | Verified  |
 | NFR-4  | C++20 standard                                                 | Verified  |
 | NFR-5  | GoogleTest ≥ 1.14; `ctest` invocable                           | Verified  |
@@ -60,7 +60,7 @@ Non-functional requirements covered:
 | NFR-8  | Distroless final image (no shell or package manager)           | Verified  |
 | NFR-9  | `docker-compose.yml` starts full local stack                   | Verified  |
 | NFR-10 | GitHub Actions CI workflow (push + PR, Debug + Release, ctest, clang-tidy) | Verified  |
-| NFR-11 | FetchContent cache in CI                                       | Verified  |
+| NFR-11 | Conan 2 package cache in CI                                    | Verified  |
 | NFR-14 | `README.md` with purpose, prerequisites, quickstart, architecture | Verified  |
 
 ---

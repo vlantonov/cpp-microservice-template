@@ -94,9 +94,9 @@ The scaffold is intended as a portfolio and reference project. Every technology 
 
 ### 3.1 Build System
 
-**NFR-1** The project shall use **CMake ≥ 3.21** as its sole build system.
+**NFR-1** The project shall use **CMake ≥ 3.23** as its sole build system.
 
-**NFR-2** Third-party dependencies shall be managed via **CMake `FetchContent`**. This choice avoids requiring contributors to install vcpkg or a separate package manager toolchain; all dependencies are declared in `CMakeLists.txt` and fetched at configure time. (vcpkg manifest mode is acknowledged as an equally valid alternative but is not required for this scaffold.)
+**NFR-2** Third-party dependencies shall be managed via **Conan 2** (`conanfile.py`). All dependency versions are pinned in `conanfile.py`; contributors run `conan install . --build=missing` once before invoking CMake. (vcpkg manifest mode is acknowledged as an equally valid alternative.)
 
 **NFR-3** The project shall build cleanly with **no warnings** under `-Wall -Wextra -Wpedantic` for supported compilers.
 
@@ -127,7 +127,7 @@ The scaffold is intended as a portfolio and reference project. Every technology 
   2. `ctest` execution (all tests must pass).
   3. `clang-tidy` static analysis against the production source files (not generated proto files).
 
-**NFR-11** The CI workflow shall cache CMake's `FetchContent` download directory to reduce build times on repeated runs.
+**NFR-11** The CI workflow shall cache the Conan 2 package store (`~/.conan2/p`) to reduce build times on repeated runs.
 
 ### 3.6 Performance Targets
 
@@ -178,7 +178,7 @@ The scaffold is intended as a portfolio and reference project. Every technology 
 | # | Question | Impact if unresolved |
 |---|----------|----------------------|
 | OQ-1 | What should the canonical service/domain name be (used in log `service` field, metric labels, package paths)? | Blocks proto package naming and label values. |
-| OQ-2 | Is there a preference for the Prometheus client library (`prometheus-cpp` vs OpenTelemetry metrics SDK exporting to Prometheus)? Both are valid; choosing OTel metrics SDK would unify instrumentation under one SDK. | Affects NFR-2 (FetchContent dependency list) and FR-17/FR-18 implementation approach. |
+| OQ-2 | Is there a preference for the Prometheus client library (`prometheus-cpp` vs OpenTelemetry metrics SDK exporting to Prometheus)? Both are valid; choosing OTel metrics SDK would unify instrumentation under one SDK. | Affects NFR-2 (Conan 2 dependency list) and FR-17/FR-18 implementation approach. |
 | OQ-3 | Should the `/metrics` HTTP server be a minimal embedded server (e.g., `cpp-httplib`) or should Envoy also proxy it? | Affects deploy topology and Envoy config scope. |
 | OQ-4 | Is ARM64 / Apple Silicon local development a hard requirement (affects base image selection in NFR-7)? | Dockerfile `FROM` platform choices. |
 | OQ-5 | What license should the scaffold carry? (Currently only `LICENSE` file exists with no content confirmed.) | README badge and third-party license compatibility check. |

@@ -17,7 +17,7 @@
 #include <opentelemetry/sdk/trace/batch_span_processor_options.h>
 #include <opentelemetry/sdk/trace/tracer_provider.h>
 #include <opentelemetry/sdk/trace/tracer_provider_factory.h>
-#include <opentelemetry/trace/canonical_code.h>
+#include <opentelemetry/trace/span_metadata.h>   // StatusCode (replaces removed canonical_code.h)
 #include <opentelemetry/trace/propagation/http_trace_context.h>
 #include <opentelemetry/trace/provider.h>
 #include <opentelemetry/trace/span.h>
@@ -156,9 +156,9 @@ Tracer::SpanHandle Tracer::StartSpan(
 
     // Extract W3C traceparent from gRPC metadata (may be empty).
     GrpcMetadataCarrier carrier(grpc_ctx);
+    auto current_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
     auto ctx = opentelemetry::context::propagation::GlobalTextMapPropagator::
-        GetGlobalPropagator()->Extract(carrier,
-            opentelemetry::context::RuntimeContext::GetCurrent());
+        GetGlobalPropagator()->Extract(carrier, current_ctx);
 
     opentelemetry::trace::StartSpanOptions opts;
     opts.parent = ctx;

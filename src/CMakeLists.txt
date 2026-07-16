@@ -22,15 +22,12 @@ target_include_directories(hello_lib
 
 target_link_libraries(hello_lib
     PRIVATE
-        proto_gen
-        spdlog::spdlog
         prometheus-cpp::core
         httplib::httplib
-        opentelemetry_api
-        opentelemetry_sdk
-        opentelemetry_trace
-        opentelemetry_exporter_otlp_grpc
     PUBLIC
+        proto_gen
+        spdlog::spdlog
+        opentelemetry-cpp::opentelemetry-cpp
         gRPC::grpc++
 )
 

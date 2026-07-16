@@ -1,7 +1,7 @@
 # =============================================================================
 # Multi-stage Dockerfile
 #
-# Stage 1 (builder): ubuntu:24.04 — builds the binary with CMake/FetchContent.
+# Stage 1 (builder): ubuntu:24.04 — installs Conan 2, fetches deps, builds.
 # Stage 2 (final):   gcr.io/distroless/cc-debian12 — minimal runtime image.
 # =============================================================================
 
@@ -10,11 +10,12 @@
 # ---------------------------------------------------------------------------
 FROM ubuntu:24.04 AS builder
 
-# Install only what the build system needs (no system gRPC/protobuf).
+# Install build toolchain + Python (required for Conan 2).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         clang \
+        python3-pip \
         git \
         ca-certificates \
         libssl-dev \
@@ -22,23 +23,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Conan 2 and generate a default profile.
+RUN pip3 install "conan>=2.0" --break-system-packages \
+    && conan profile detect
+
 WORKDIR /app
 
 # Copy source tree
 COPY . .
 
-# Configure and build in Release mode.
-# FetchContent downloads go into .fetchcontent (gitignored, docker-cached layer).
-RUN cmake -B build/release \
-        -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_CXX_COMPILER=clang++ \
-        -DFETCHCONTENT_BASE_DIR=/app/.fetchcontent \
-    && cmake --build build/release --parallel "$(nproc)"
+# Install all dependencies via Conan (builds from source if no binary
+# package is available for this platform).
+COPY conan/profiles/linux-clang18 /root/.conan2/profiles/default
+RUN conan install . \
+        --profile conan/profiles/linux-clang18 \
+        --build=missing \
+        -s build_type=Release
+
+# Configure and build in Release mode using the Conan-generated preset.
+RUN cmake --preset conan-release \
+    && cmake --build --preset conan-release --parallel "$(nproc)"
 
 # Collect shared-library dependencies so they can be copied to the final stage.
 RUN mkdir /runtime && \
-    cp /app/build/release/src/hello_server /runtime/hello_server && \
+    cp /app/build/Release/src/hello_server /runtime/hello_server && \
     ldd /runtime/hello_server 2>/dev/null \
         | grep "=> /" \
         | awk '{print $3}' \

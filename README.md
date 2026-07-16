@@ -55,12 +55,13 @@ Prometheus metrics, and OpenTelemetry distributed tracing.
 
 ## Prerequisites
 
-- CMake ≥ 3.21
+- CMake ≥ 3.23
+- Conan 2 (`pip install "conan>=2.0"`)
 - A C++20 compiler (`clang++` or `g++ ≥ 12`)
 - Ninja
 - Git
 - Docker + Docker Compose (for the full stack)
-- `libssl-dev`, `zlib1g-dev`, `pkg-config` (for gRPC)
+- `libssl-dev`, `zlib1g-dev`, `pkg-config` (needed when Conan builds some deps from source)
 
 ---
 
@@ -69,25 +70,33 @@ Prometheus metrics, and OpenTelemetry distributed tracing.
 ### Local build
 
 ```bash
-# Configure (downloads all deps via FetchContent on first run — takes a while)
-cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+# Install Conan dependencies (first run downloads/builds — takes a while)
+conan install . --profile conan/profiles/linux-clang18 --build=missing \
+    -s build_type=Debug
+
+# Configure
+cmake --preset conan-debug
 
 # Build
-cmake --build build/debug --parallel
+cmake --build --preset conan-debug --parallel
 
 # Run unit tests
-ctest --test-dir build/debug --output-on-failure
+ctest --test-dir build/Debug --output-on-failure
 
 # Start the server
-./build/debug/src/hello_server
+./build/Debug/src/hello_server
 ```
 
 ### Docker Compose (full stack)
 
 ```bash
+# Install Conan dependencies and configure for Release
+conan install . --profile conan/profiles/linux-clang18 --build=missing \
+    -s build_type=Release
+cmake --preset conan-release
+
 # Build the proto descriptor set first (needed by Envoy)
-cmake -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build/release --target proto_descriptor_set
+cmake --build --preset conan-release --target proto_descriptor_set
 
 # Bring up all services
 docker compose up --build
@@ -141,7 +150,7 @@ All configuration is via environment variables:
 
 ```
 .
-├── CMakeLists.txt           # Root: FetchContent + add_subdirectory
+├── CMakeLists.txt           # Root: find_package() + add_subdirectory
 ├── proto/
 │   └── hello/v1/hello.proto # Service definition + HTTP annotations
 ├── src/
