@@ -1,0 +1,135 @@
+# .gitlab-ci.yml
+# GitLab CI pipeline — mirrors .github/workflows/ci.yml
+#
+# Stages:
+#   build-test  — compile, unit-test, and static-analyse (Debug + Release)
+#   docker      — verify the multi-stage Dockerfile builds cleanly (no push)
+#
+# Triggers:
+#   • every push to main
+#   • every merge-request targeting main
+
+stages:
+  - build-test
+  - docker
+
+# ---------------------------------------------------------------------------
+# Shared configuration for both build variants
+# ---------------------------------------------------------------------------
+.build-test-common:
+  stage: build-test
+  image: ubuntu:24.04
+  variables:
+    # Keep the Conan store inside the project directory so GitLab's cache
+    # mechanism can persist it between jobs.
+    CONAN_HOME: "${CI_PROJECT_DIR}/.conan2"
+  # File-based cache key: invalidates automatically when conanfile.py changes.
+  cache:
+    key:
+      files:
+        - conanfile.py
+      prefix: "conan-${BUILD_TYPE}"
+    paths:
+      - .conan2/p
+    policy: pull-push
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends
+        cmake
+        ninja-build
+        clang
+        clang-tidy
+        python3-pip
+        libssl-dev
+        pkg-config
+        zlib1g-dev
+        ca-certificates
+    # --break-system-packages is required on Ubuntu 24.04 (PEP 668).
+    - pip3 install --break-system-packages "conan>=2.0"
+    - conan profile detect --force
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# ---------------------------------------------------------------------------
+# Debug build — includes clang-tidy static analysis
+# ---------------------------------------------------------------------------
+build-test-debug:
+  extends: .build-test-common
+  variables:
+    BUILD_TYPE: Debug
+  script:
+    - conan install .
+        --profile:host conan/profiles/linux-clang18
+        --profile:build conan/profiles/linux-clang18
+        --build=missing
+        -s:h build_type=Debug
+        -s:b build_type=Debug
+    - cmake --preset conan-debug
+    - cmake --build --preset conan-debug --parallel
+    - ctest --test-dir build/Debug --output-on-failure --parallel $(nproc)
+    # clang-tidy: scoped to src/ to exclude generated proto headers.
+    - run-clang-tidy -p build/Debug src/
+
+# ---------------------------------------------------------------------------
+# Release build — no static analysis
+# ---------------------------------------------------------------------------
+build-test-release:
+  extends: .build-test-common
+  variables:
+    BUILD_TYPE: Release
+  script:
+    - conan install .
+        --profile:host conan/profiles/linux-clang18
+        --profile:build conan/profiles/linux-clang18
+        --build=missing
+        -s:h build_type=Release
+        -s:b build_type=Release
+    - cmake --preset conan-release
+    - cmake --build --preset conan-release --parallel
+    - ctest --test-dir build/Release --output-on-failure --parallel $(nproc)
+
+# ---------------------------------------------------------------------------
+# Docker Build — verify the multi-stage Dockerfile compiles cleanly.
+# Runs only after BOTH matrix variants pass. Does NOT push to any registry.
+# ---------------------------------------------------------------------------
+docker-build:
+  stage: docker
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+    # Use the Docker daemon provided by the dind service.
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  # Dockerfile-content-based cache key: invalidates on any Dockerfile change.
+  cache:
+    key:
+      files:
+        - Dockerfile
+      prefix: "docker"
+    paths:
+      - .buildx-cache
+    policy: pull-push
+  needs:
+    - build-test-debug
+    - build-test-release
+  script:
+    - docker info
+    - docker buildx build
+        --platform linux/amd64
+        --cache-from type=local,src=.buildx-cache
+        --cache-to   type=local,dest=.buildx-cache-new,mode=max
+        -t hello-service:ci
+        --load
+        .
+    # Rotate cache directory to prevent unbounded growth.
+    - rm -rf .buildx-cache
+    - mv .buildx-cache-new .buildx-cache
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

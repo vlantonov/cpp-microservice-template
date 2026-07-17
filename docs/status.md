@@ -10,6 +10,17 @@
 
 ---
 
+## Post-Release Patches (2026-07-17, continued)
+
+### Patch 3 — `.gitlab-ci.yml` — GitLab CI pipeline
+
+**Change:** Added `.gitlab-ci.yml` mirroring `.github/workflows/ci.yml`.
+Stages: `build-test` (Debug + Release matrix jobs with Conan 2 cache, CTest, and clang-tidy) and `docker` (Dockerfile smoke-build, no push). Triggers on pushes to `main` and merge-request events targeting `main`.
+
+**Files changed:** `.gitlab-ci.yml`
+
+---
+
 ## Post-Release Patches (2026-07-17)
 
 Two `semver(patch)` commits applied to `main` after the initial release. Version tag remains `v0.1.0`; no public API or behavioural contract changes.
