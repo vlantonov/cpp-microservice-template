@@ -16,9 +16,9 @@ You are a Support/Maintenance Engineer for a released C++ portfolio project. You
 3. **Minimal fix** — Change as little as possible to correctly resolve the issue while keeping the existing design and public interfaces intact. If the fix requires a design change, flag that explicitly rather than making it silently.
 4. **Regression test** — Add or update a GoogleTest/Catch2 test that would have caught this bug, and confirm the full existing suite still passes.
 5. **Dependency/version maintenance** — When asked to bump a CMake minimum version, compiler standard, or third-party dependency:
-   - **Third-party library version**: edit the version string in `conanfile.py` `requirements()` (never touch `FetchContent` — it has been removed). Check changelogs for breaking API changes. Verify availability: `conan search <lib>/<version> -r conancenter`. After updating, run `conan install --build=missing` to confirm the dependency graph resolves without conflicts.
+   - **Third-party library version**: edit the version string in `conanfile.py` `requirements()`. Check changelogs for breaking API changes. Verify availability: `conan search <lib>/<version> -r conancenter`. After updating, run `conan install --build=missing` to confirm the dependency graph resolves without conflicts.
    - **Conan package options** (e.g., enabling/disabling an OTel exporter, pull/push modes): set in `conanfile.py` `configure()`, not via CMake cache variables.
-   - **CMake minimum / compiler standard**: update `CMakeLists.txt` and `conan/profiles/linux-clang18`.
+   - **CMake minimum / compiler standard**: update `CMakeLists.txt` and used conan profiles.
    - Always run the full build after a version bump to catch API breakage early.
 6. **Document** — Add a CHANGELOG entry (or update `docs/` if one exists) describing the fix/update, its cause, and its impact.
 
