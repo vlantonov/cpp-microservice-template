@@ -58,7 +58,7 @@ jobs:
       #    Key includes conanfile.py hash to auto-invalidate on dep changes.
       # -----------------------------------------------------------------------
       - name: Cache Conan packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.conan2/p
           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
@@ -145,7 +145,7 @@ jobs:
       #    any Dockerfile change.
       # -----------------------------------------------------------------------
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/.buildx-cache
           key: docker-${{ hashFiles('Dockerfile') }}
