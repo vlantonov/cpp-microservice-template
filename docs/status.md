@@ -2,10 +2,38 @@
 
 | Field              | Value                          |
 |--------------------|--------------------------------|
-| SDLC Stage         | Released                       |
-| Version            | v0.1.0                         |
+| SDLC Stage         | Released (active maintenance)  |
+| Version            | v0.1.0 (patch 2 applied)       |
 | Release Date       | 2026-07-14                     |
+| Last Updated       | 2026-07-17                     |
 | QA Sign-off        | Approved — zero blocking defects |
+
+---
+
+## Post-Release Patches (2026-07-17)
+
+Two `semver(patch)` commits applied to `main` after the initial release. Version tag remains `v0.1.0`; no public API or behavioural contract changes.
+
+### Patch 1 — `4b298ec` — `src/metrics.cpp` gauge pre-initialisation
+
+**Problem:** `prometheus-cpp` only serialises metric families that have at least one registered child instance. `rpc_active_connections` had no child until `SetActiveConnections()` was first called, causing the gauge to be absent from the `/metrics` HTTP response and failing the CI test `MetricsHttpTest.EndpointReturnsPrometheusTextFormat`.
+
+**Fix:** `Metrics::Metrics()` constructor now calls `active_connections.Add({service}).Set(0.0)` so the gauge child exists from startup. `Family<Gauge>::Add()` is idempotent for identical label sets, so subsequent `SetActiveConnections()` calls are unaffected.
+
+**Files changed:** `src/metrics.cpp`
+
+---
+
+### Patch 2 — `8757084` — Agent instruction updates
+
+**Problem:** The blanket `FetchContent` prohibition in agent definitions was overly prescriptive for a Conan 2 project, and the hardcoded profile path `conan/profiles/linux-clang18` made maintenance instructions brittle.
+
+**Fix:**
+- `cpp-developer.agent.md`: replaced hard FetchContent ban with neutral description of Conan-generated find-modules.
+- `maintenance-engineer.agent.md`: removed FetchContent parenthetical; generalized profile reference to "used Conan profiles".
+- `system-architect.agent.md`: removed "Do not specify FetchContent" clause; retained restriction on bare system-installed library paths.
+
+**Files changed:** `.github/agents/cpp-developer.agent.md`, `.github/agents/maintenance-engineer.agent.md`, `.github/agents/system-architect.agent.md`
 
 ---
 
