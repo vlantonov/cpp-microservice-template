@@ -36,6 +36,7 @@ stages:
     - apt-get update
     - apt-get install -y --no-install-recommends
         cmake
+        make
         ninja-build
         clang
         clang-tidy
