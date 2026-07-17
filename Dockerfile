@@ -8,7 +8,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Build
 # ---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:26.04 AS builder
 
 # Install build toolchain + Python (required for Conan 2).
 RUN apt-get update && apt-get install -y --no-install-recommends \
