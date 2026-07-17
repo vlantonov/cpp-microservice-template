@@ -39,6 +39,7 @@ stages:
         ninja-build
         clang
         clang-tidy
+        perl
         python3-pip
         libssl-dev
         pkg-config
