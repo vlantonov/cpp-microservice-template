@@ -1,7 +1,7 @@
 # C++ Microservice Template
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/your-org/cpp-microservice-template/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CI](https://github.com/vlantonov/cpp-microservice-template/actions/workflows/ci.yml/badge.svg)](https://github.com/vlantonov/cpp-microservice-template/actions/workflows/ci.yml)
 
 A production-ready C++20 gRPC microservice scaffold with structured logging,
 Prometheus metrics, and OpenTelemetry distributed tracing.
@@ -30,17 +30,17 @@ Prometheus metrics, and OpenTelemetry distributed tracing.
 │  curl / │─────────────▶│  Envoy :8080     │─────────────────────┐
 │ browser │              │ grpc_json_       │                     │
 └─────────┘              │ transcoder       │  ┌──────────────────▼──┐
-                         │                  │  │   hello_server       │
+                         │                  │  │   hello_server      │
                          │ GET /healthz     │  │  ┌──────────────┐   │
                          │  direct_response │  │  │ HelloService │   │
                          └──────────────────┘  │  └──────┬───────┘   │
-                                               │         │            │
+                                               │         │           │
                                                │  ┌──────▼───────┐   │
   ┌──────────────────┐  OTLP/gRPC :4317        │  │   Logger     │   │
   │  OTel Collector  │◀────────────────────────│  │ (spdlog JSON)│   │
   └──────────────────┘                         │  └──────────────┘   │
                                                │  ┌──────────────┐   │
-  ┌──────────────────┐  HTTP scrape :9090       │  │   Metrics    │   │
+  ┌──────────────────┐  HTTP scrape :9090      │  │   Metrics    │   │
   │   Prometheus     │◀────────────────────────│  │ (prom-cpp)   │   │
   └──────────────────┘                         │  └──────────────┘   │
                                                │  ┌──────────────┐   │
