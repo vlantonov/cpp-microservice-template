@@ -15,3 +15,5 @@ compiler.cppstd=20
 # Ensures both VirtualBuildEnv (package source builds) and CMakeToolchain
 # (our project's conan_toolchain.cmake) use the correct clang binaries.
 tools.build:compiler_executables={"c": "clang-18", "cpp": "clang++-18"}
+# Use Ninja for all dependency builds (make is not available in CI).
+tools.cmake.cmaketoolchain:generator=Ninja
