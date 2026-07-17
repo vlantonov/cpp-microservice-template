@@ -69,6 +69,13 @@ struct Metrics::Impl {
 Metrics::Metrics(std::string_view service_name, uint16_t http_port)
     : impl_(std::make_unique<Impl>(service_name, http_port)) {
 
+    // Pre-initialise the active-connections gauge so it always appears in the
+    // /metrics output (prometheus-cpp only serialises families that have at
+    // least one child instance).
+    impl_->active_connections
+        .Add({{"service", impl_->service_name}})
+        .Set(0.0);
+
     // Register the /metrics HTTP handler.  Capture raw pointer — the lambda
     // lifetime is bounded by impl_->http_server which lives inside impl_.
     Impl* impl_raw = impl_.get();
