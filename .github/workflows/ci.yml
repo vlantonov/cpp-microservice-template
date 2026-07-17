@@ -21,7 +21,7 @@ jobs:
       # 1. Checkout
       # -----------------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -131,7 +131,7 @@ jobs:
       # 1. Checkout
       # -----------------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # -----------------------------------------------------------------------
       # 2. Set up Docker Buildx (required for --platform flag)
