@@ -10,8 +10,20 @@ build/
 # Conan-generated preset file (regenerated inside the container by conan install)
 CMakeUserPresets.json
 
+# VCS and CI metadata
+.git/
+.github/
+.gitlab-ci.yml
+
 # Old FetchContent cache (no longer used; gitignored but may exist on disk)
 .fetchcontent/
+
+# Documentation and deployment artifacts not required for compilation
+docs/
+deploy/
+README.md
+LICENSE
+VERSION
 
 # Editor / IDE artefacts
 .vscode/

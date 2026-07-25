@@ -1,21 +1,28 @@
+# syntax=docker/dockerfile:1.7
+
 # =============================================================================
 # Multi-stage Dockerfile
 #
-# Stage 1 (builder): ubuntu:24.04 — installs Conan 2, fetches deps, builds.
-# Stage 2 (final):   gcr.io/distroless/cc-debian12 — minimal runtime image.
+# Stage 1 (toolchain):  ubuntu:24.04 - installs Conan 2 + C++ build tools.
+# Stage 2 (conan-deps): cache-stable dependency resolution layer.
+# Stage 3 (builder):    configure + compile with ccache.
+# Stage 4 (verified):   run unit tests and collect runtime artifacts.
+# Stage 5 (final):      gcr.io/distroless/cc-debian12 runtime image.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: Build
+# Stage 1: Toolchain
 # ---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:24.04 AS toolchain
 
-# Install build toolchain + Python (required for Conan 2).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         make \
         clang \
+        clang-tidy \
+        lld \
+        ccache \
         python3-pip \
         git \
         ca-certificates \
@@ -24,30 +31,51 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Conan 2 and generate a default profile.
 RUN pip3 install "conan>=2.0" --break-system-packages \
-    && conan profile detect
+    && conan profile detect --force
 
 WORKDIR /app
 
-# Copy source tree
-COPY . .
+# ---------------------------------------------------------------------------
+# Stage 2: Conan dependencies
+# Keep this layer stable by copying only dependency-defining files first.
+# ---------------------------------------------------------------------------
+FROM toolchain AS conan-deps
 
-# Install all dependencies via Conan (builds from source if no binary
-# package is available for this platform).
-COPY conan/profiles/linux-clang18 /root/.conan2/profiles/default
-RUN conan install . \
+COPY conanfile.py CMakeLists.txt CMakePresets.json ./
+COPY conan ./conan
+
+RUN --mount=type=cache,target=/root/.conan2/p,id=conan-pkg-cache \
+    conan install . \
         --profile:host conan/profiles/linux-clang18 \
         --profile:build conan/profiles/linux-clang18 \
         --build=missing \
         -s:h build_type=Release \
         -s:b build_type=Release
 
-# Configure and build in Release mode using the Conan-generated preset.
-RUN cmake --preset conan-release \
-    && cmake --build --preset conan-release --parallel "$(nproc)"
+# ---------------------------------------------------------------------------
+# Stage 3: Build
+# ---------------------------------------------------------------------------
+FROM conan-deps AS builder
 
-# Collect shared-library dependencies so they can be copied to the final stage.
+COPY proto ./proto
+COPY src ./src
+COPY tests ./tests
+
+RUN cmake --preset conan-release \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+RUN --mount=type=cache,target=/root/.cache/ccache,id=ccache-obj-cache \
+    cmake --build --preset conan-release --parallel "$(nproc)"
+
+# ---------------------------------------------------------------------------
+# Stage 4: Verify and collect runtime assets
+# ---------------------------------------------------------------------------
+FROM builder AS verified
+
+RUN ctest --test-dir build/Release --output-on-failure --parallel "$(nproc)"
+
 RUN mkdir /runtime && \
     cp /app/build/Release/src/hello_server /runtime/hello_server && \
     ldd /runtime/hello_server 2>/dev/null \
@@ -59,18 +87,13 @@ RUN mkdir /runtime && \
           done
 
 # ---------------------------------------------------------------------------
-# Stage 2: Minimal runtime image
+# Stage 5: Minimal runtime image
 # ---------------------------------------------------------------------------
 FROM gcr.io/distroless/cc-debian12 AS final
 
-# Copy binary
-COPY --from=builder /runtime/hello_server /hello_server
+COPY --from=verified /runtime/hello_server /hello_server
+COPY --from=verified /runtime/*.so* /usr/lib/
 
-# Copy any shared libraries not already in distroless/cc-debian12.
-# (distroless/cc already ships libc6, libstdc++, libgcc-s1)
-COPY --from=builder /runtime/*.so*  /usr/lib/
-
-# Service ports
 EXPOSE 50051
 EXPOSE 9090
 

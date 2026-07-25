@@ -17,3 +17,6 @@ compiler.cppstd=20
 tools.build:compiler_executables={"c": "clang-18", "cpp": "clang++-18"}
 # Use Ninja for all dependency builds (make is not available in CI).
 tools.cmake.cmaketoolchain:generator=Ninja
+# Use LLVM's linker for faster link steps.
+tools.build:exelinkflags=["-fuse-ld=lld"]
+tools.build:sharedlinkflags=["-fuse-ld=lld"]

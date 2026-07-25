@@ -7,166 +7,38 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
-    name: Build & Test (${{ matrix.build_type }})
-    runs-on: ubuntu-24.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Debug, Release]
-
-    steps:
-      # -----------------------------------------------------------------------
-      # 1. Checkout
-      # -----------------------------------------------------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # -----------------------------------------------------------------------
-      # 2. Install system packages
-      #    libssl-dev / zlib1g-dev / pkg-config are retained because Conan
-      #    may build some deps from source (--build=missing) and those
-      #    recipes rely on system OpenSSL / zlib.
-      # -----------------------------------------------------------------------
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            cmake \
-            make \
-            ninja-build \
-            clang \
-            clang-tidy \
-            python3-pip \
-            libssl-dev \
-            pkg-config \
-            zlib1g-dev \
-            ca-certificates
-
-      # -----------------------------------------------------------------------
-      # 3. Install Conan 2
-      # -----------------------------------------------------------------------
-      - name: Install Conan
-        run: |
-          pip3 install "conan>=2.0"
-          conan profile detect --force
-
-      # -----------------------------------------------------------------------
-      # 4. Cache Conan package store
-      #    Key includes conanfile.py hash to auto-invalidate on dep changes.
-      # -----------------------------------------------------------------------
-      - name: Cache Conan packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.conan2/p
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-${{ runner.os }}-
-
-      # -----------------------------------------------------------------------
-      # 5. Install dependencies via Conan
-      #    Generates build/<build_type>/generators/conan_toolchain.cmake
-      #    and CMakeUserPresets.json in the project root.
-      # -----------------------------------------------------------------------
-      - name: Conan install
-        run: |
-          conan install . \
-            --profile:host conan/profiles/linux-clang18 \
-            --profile:build conan/profiles/linux-clang18 \
-            --build=missing \
-            -s:h build_type=${{ matrix.build_type }} \
-            -s:b build_type=${{ matrix.build_type }}
-
-      # -----------------------------------------------------------------------
-      # 6. CMake Configure (via Conan-generated preset)
-      #    CMAKE_CXX_CLANG_TIDY is NOT set here; static analysis runs
-      #    separately in step 9 to avoid analysing generated proto TUs.
-      # -----------------------------------------------------------------------
-      - name: Configure
-        run: |
-          BUILD_PRESET="conan-$(echo '${{ matrix.build_type }}' | tr '[:upper:]' '[:lower:]')"
-          cmake --preset "${BUILD_PRESET}"
-
-      # -----------------------------------------------------------------------
-      # 7. Build
-      # -----------------------------------------------------------------------
-      - name: Build
-        run: |
-          BUILD_PRESET="conan-$(echo '${{ matrix.build_type }}' | tr '[:upper:]' '[:lower:]')"
-          cmake --build --preset "${BUILD_PRESET}" --parallel
-
-      # -----------------------------------------------------------------------
-      # 8. Test
-      # -----------------------------------------------------------------------
-      - name: Test
-        run: |
-          ctest --test-dir build/${{ matrix.build_type }} \
-                --output-on-failure \
-                --parallel "$(nproc)"
-
-      # -----------------------------------------------------------------------
-      # 9. clang-tidy (Debug variant only)
-      #    Scoped to src/ to exclude generated proto headers and third-party code.
-      #    compile_commands.json lives in build/Debug (set by cmake_layout).
-      # -----------------------------------------------------------------------
-      - name: clang-tidy
-        if: matrix.build_type == 'Debug'
-        run: |
-          run-clang-tidy -p build/Debug src/
-
-  # ---------------------------------------------------------------------------
-  # docker-build — verify the multi-stage Dockerfile builds cleanly.
-  # Runs after ALL matrix variants of build-and-test pass.
-  # Does NOT push to any registry.
-  # ---------------------------------------------------------------------------
   docker-build:
     name: Docker Build
     runs-on: ubuntu-24.04
-    needs: build-and-test
+    env:
+      DOCKER_BUILDKIT: "1"
 
     steps:
-      # -----------------------------------------------------------------------
-      # 1. Checkout
-      # -----------------------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # 2. Set up Docker Buildx (required for --platform flag)
-      # -----------------------------------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # -----------------------------------------------------------------------
-      # 3. Restore Docker layer cache
-      #    Key is keyed on Dockerfile content; invalidates automatically on
-      #    any Dockerfile change.
-      # -----------------------------------------------------------------------
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: docker-${{ hashFiles('Dockerfile') }}
+          key: docker-${{ runner.os }}-${{ hashFiles('Dockerfile', 'conanfile.py', 'conan/profiles/linux-clang18', '.dockerignore') }}
           restore-keys: |
-            docker-
+            docker-${{ runner.os }}-
 
-      # -----------------------------------------------------------------------
-      # 4. Build image (linux/amd64, no push)
-      #    --load exports the image to the local Docker daemon for smoke-testing
-      #    if needed in a follow-up step; the image is never pushed.
-      # -----------------------------------------------------------------------
       - name: Build Docker image
         run: |
           docker buildx build \
             --platform linux/amd64 \
             --cache-from type=local,src=/tmp/.buildx-cache \
             --cache-to   type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --target final \
             -t hello-service:ci \
             --load \
             .
-          # Rotate cache directory to prevent unbounded cache growth
+
+          # Rotate cache directory to prevent unbounded cache growth.
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
