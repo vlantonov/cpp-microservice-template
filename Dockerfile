@@ -45,8 +45,7 @@ FROM toolchain AS conan-deps
 COPY conanfile.py CMakeLists.txt CMakePresets.json ./
 COPY conan ./conan
 
-RUN --mount=type=cache,target=/root/.conan2/p,id=conan-pkg-cache \
-    conan install . \
+RUN conan install . \
         --profile:host conan/profiles/linux-clang18 \
         --profile:build conan/profiles/linux-clang18 \
         --build=missing \
