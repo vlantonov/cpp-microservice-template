@@ -25,8 +25,6 @@ docker-build:
       files:
         - Dockerfile
         - conanfile.py
-        - conan/profiles/linux-clang18
-        - .dockerignore
       prefix: "docker"
     paths:
       - .buildx-cache
