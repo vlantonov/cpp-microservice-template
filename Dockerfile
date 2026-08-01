@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Toolchain
 # ---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS toolchain
+FROM ubuntu:26.04 AS toolchain
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
