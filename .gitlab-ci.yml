@@ -25,15 +25,14 @@ docker-build:
       files:
         - Dockerfile
         - conanfile.py
-        - conan/profiles/linux-clang18
-        - .dockerignore
       prefix: "docker"
     paths:
       - .buildx-cache
     policy: pull-push
   script:
     - docker info
-    - docker buildx create --name ci-builder --use || docker buildx use ci-builder
+    - docker context inspect ci-context >/dev/null 2>&1 || docker context create ci-context --docker "host=${DOCKER_HOST},ca=${DOCKER_CERT_PATH}/ca.pem,cert=${DOCKER_CERT_PATH}/cert.pem,key=${DOCKER_CERT_PATH}/key.pem"
+    - docker buildx create --name ci-builder --use ci-context || docker buildx use ci-builder
     - docker buildx build
         --platform linux/amd64
         --cache-from type=local,src=.buildx-cache
