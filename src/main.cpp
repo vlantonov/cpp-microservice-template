@@ -6,7 +6,6 @@
 #include <string>
 #include <thread>
 
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
@@ -77,7 +76,6 @@ int main() {
     hello::HelloServiceImpl service(logger, metrics, tracer);
 
     grpc::EnableDefaultHealthCheckService(true);
-    grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
     grpc::ServerBuilder builder;
     builder.AddListeningPort("0.0.0.0:" + std::to_string(grpc_port),

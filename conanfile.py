@@ -55,6 +55,9 @@ class CppMicroserviceTemplateConan(ConanFile):
 
         # gRPC: build the C++ code-generator plugin (grpc_cpp_plugin).
         self.options["grpc"].cpp_plugin = True
+        # grpc++_reflection and grpcpp_channelz require codegen which fails on
+        # ubuntu:26.04; disabling keeps the cmake generators clean.
+        self.options["grpc"].codegen = False
 
     # ------------------------------------------------------------------
     # Build layout — standard Conan 2 CMake layout:

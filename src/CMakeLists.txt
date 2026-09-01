@@ -41,5 +41,4 @@ target_compile_options(hello_server PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(hello_server
     PRIVATE
         hello_lib
-        gRPC::grpc++_reflection
 )
