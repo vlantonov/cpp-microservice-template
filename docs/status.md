@@ -12,7 +12,21 @@
 
 ## Post-Release Patches (2026-09-01)
 
-### Patch 6 — `e7439b5` — `conanfile.py` — disable gRPC channelz to fix missing library
+### Patch 7 — `467007a` — `Dockerfile` + `conanfile.py` — correct grpcpp_channelz fix
+
+**Problem:** CI builder stage fails on ubuntu:26.04 with `Library 'grpcpp_channelz' not found in package` because `grpc/1.69.0` built from source on that OS does not produce `libgrpcpp_channelz.a`, yet the Conan CMakeDeps generator includes it in `grpc_LIBS_RELEASE` and `grpc_gRPC_grpcpp_channelz_LIBS_RELEASE`, causing cmake's `conan_package_library_targets()` to fatal-error.
+
+**Why Patch 6 was wrong:** Patch 6 added `self.options["grpc"].channelz = False` to `conanfile.py`. The CCI recipe for `grpc/1.69.0` has no `channelz` option (valid options: codegen, cpp_plugin, secure, etc.) — setting it would cause `conan install` to abort with "option not found".
+
+**Fix:** (a) Removed the invalid option from `conanfile.py`. (b) In the Dockerfile `conan-deps` stage, chained a `python3` one-liner after `conan install` that patches the generated `gRPC-release-*-data.cmake` to remove `grpcpp_channelz` from `grpc_LIBS_RELEASE` and clear `grpc_gRPC_grpcpp_channelz_LIBS_RELEASE`. The patched files are in `/app/build/Release/generators/` (image layer, not cache mount) so they are inherited by the `builder` stage. The project has zero channelz usage.
+
+**QA:** PASS — static review, all checks green.
+
+**Files changed:** `conanfile.py`, `Dockerfile`
+
+---
+
+### Patch 6 — `e7439b5` — `conanfile.py` — disable gRPC channelz to fix missing library (superseded by Patch 7)
 
 **Problem:** Docker CI builder stage failed on `ubuntu:26.04` with `Library 'grpcpp_channelz' not found in package`. The CCI recipe for `grpc/1.69.0` declares the `grpcpp_channelz` component even when it is not built, causing CMake to abort at `find_package(gRPC)`.
 
