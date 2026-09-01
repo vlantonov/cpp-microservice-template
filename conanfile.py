@@ -55,9 +55,6 @@ class CppMicroserviceTemplateConan(ConanFile):
 
         # gRPC: build the C++ code-generator plugin (grpc_cpp_plugin).
         self.options["grpc"].cpp_plugin = True
-        # channelz binary is not produced on ubuntu:26.04 but the CCI recipe
-        # still declares it, causing CMake to fail with a missing-library error.
-        self.options["grpc"].channelz = False
 
     # ------------------------------------------------------------------
     # Build layout — standard Conan 2 CMake layout:

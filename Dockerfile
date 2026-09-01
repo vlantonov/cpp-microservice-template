@@ -52,7 +52,18 @@ RUN --mount=type=cache,target=/root/.conan2/p,id=conan-cache \
         --profile:build conan/profiles/linux-clang18 \
         --build=missing \
         -s:h build_type=Release \
-        -s:b build_type=Release
+        -s:b build_type=Release && \
+    python3 -c "
+import glob
+for f in glob.glob('build/Release/generators/gRPC-release-*-data.cmake'):
+    txt = open(f).read()
+    txt = txt.replace('grpcpp_channelz grpc++_reflection', 'grpc++_reflection')
+    txt = txt.replace('grpcpp_channelz ', '')
+    txt = txt.replace(
+        'set(grpc_gRPC_grpcpp_channelz_LIBS_RELEASE grpcpp_channelz)',
+        'set(grpc_gRPC_grpcpp_channelz_LIBS_RELEASE )')
+    open(f, 'w').write(txt)
+"
 
 # ---------------------------------------------------------------------------
 # Seed stage: replaced at build time with --build-context ccache-seed=.ccache
