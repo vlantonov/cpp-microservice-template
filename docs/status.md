@@ -5,12 +5,24 @@
 | SDLC Stage         | Released (active maintenance)  |
 | Version            | v0.1.0 (patch 2 applied)       |
 | Release Date       | 2026-07-14                     |
-| Last Updated       | 2026-07-17                     |
+| Last Updated       | 2026-09-01                     |
 | QA Sign-off        | Approved — zero blocking defects |
 
 ---
 
 ## Post-Release Patches (2026-09-01)
+
+### Patch 6 — `e7439b5` — `conanfile.py` — disable gRPC channelz to fix missing library
+
+**Problem:** Docker CI builder stage failed on `ubuntu:26.04` with `Library 'grpcpp_channelz' not found in package`. The CCI recipe for `grpc/1.69.0` declares the `grpcpp_channelz` component even when it is not built, causing CMake to abort at `find_package(gRPC)`.
+
+**Fix:** Added `self.options["grpc"].channelz = False` in `conanfile.py` `configure()` so Conan instructs gRPC not to build — and not to declare — the channelz component, removing the stale library reference from the generated CMake config.
+
+**Files changed:** `conanfile.py`
+
+**QA result:** PASS — static review confirmed no source, test, or CMake file references channelz; zero regression risk.
+
+---
 
 ### Patch 5 — CI build-time optimizations (`77dd8a9`, `82cb1a8`, `0d250fe`)
 
