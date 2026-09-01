@@ -73,7 +73,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache,id=ccache-obj-cache \
 # ---------------------------------------------------------------------------
 FROM builder AS verified
 
-RUN run-clang-tidy -p build/Release src/
+RUN run-clang-tidy-18 -p build/Release src/
 
 RUN ctest --test-dir build/Release --output-on-failure --parallel "$(nproc)"
 
