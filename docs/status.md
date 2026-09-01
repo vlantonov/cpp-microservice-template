@@ -10,6 +10,20 @@
 
 ---
 
+## Post-Release Patches (2026-09-01)
+
+### Patch 4 — `01fcb1e` — `Dockerfile` — fix versioned clang-tidy binary
+
+**Problem:** CI stage `verified` called `run-clang-tidy` which is not installed; `clang-tidy-18` provides `run-clang-tidy-18` only (exit code 127).
+
+**Fix:** Changed `RUN run-clang-tidy …` to `RUN run-clang-tidy-18 …` in the `verified` stage.
+
+**Files changed:** `Dockerfile`
+
+**Note:** `docs/design/microservice-design.md` lines 162 and 641 still reference the unversioned `run-clang-tidy` — doc-only, no functional impact.
+
+---
+
 ## Post-Release Patches (2026-07-17, continued)
 
 ### Patch 3 — `.gitlab-ci.yml` — GitLab CI pipeline
