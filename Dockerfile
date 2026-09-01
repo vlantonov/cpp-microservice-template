@@ -53,6 +53,12 @@ RUN conan install . \
         -s:b build_type=Release
 
 # ---------------------------------------------------------------------------
+# Seed stage: replaced at build time with --build-context ccache-seed=.ccache
+# so CI can inject the warm ccache exported from the previous run.
+# ---------------------------------------------------------------------------
+FROM scratch AS ccache-seed
+
+# ---------------------------------------------------------------------------
 # Stage 3: Build
 # ---------------------------------------------------------------------------
 FROM conan-deps AS builder
@@ -65,8 +71,18 @@ RUN cmake --preset conan-release \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
-RUN --mount=type=cache,target=/root/.cache/ccache,id=ccache-obj-cache \
-    cmake --build --preset conan-release --parallel "$(nproc)"
+# Seed ccache from the GitLab-cached .ccache dir injected via --build-context.
+RUN --mount=from=ccache-seed,target=/ccache-seed \
+    cp -a /ccache-seed/. /root/.cache/ccache/ 2>/dev/null || true && \
+    cmake --build --preset conan-release --parallel "$(nproc)" && \
+    ccache -s
+
+# ---------------------------------------------------------------------------
+# Cache export: CI builds this target with --output to extract the warm
+# ccache and persist it as a GitLab cache artifact for the next run.
+# ---------------------------------------------------------------------------
+FROM scratch AS ccache-export
+COPY --from=builder /root/.cache/ccache /
 
 # ---------------------------------------------------------------------------
 # Stage 4: Verify and collect runtime assets

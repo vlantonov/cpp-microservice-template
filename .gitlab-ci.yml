@@ -28,21 +28,33 @@ docker-build:
       prefix: "docker"
     paths:
       - .buildx-cache
+      - .ccache  # warm ccache seeded into builder via --build-context on the next run
     policy: pull-push
   script:
+    # Ensure seed dir exists on first run (empty dir is valid for --build-context)
+    - mkdir -p .ccache
     - docker info
     - docker context inspect ci-context >/dev/null 2>&1 || docker context create ci-context --docker "host=${DOCKER_HOST},ca=${DOCKER_CERT_PATH}/ca.pem,cert=${DOCKER_CERT_PATH}/cert.pem,key=${DOCKER_CERT_PATH}/key.pem"
     - docker buildx create --name ci-builder --use ci-context || docker buildx use ci-builder
     - docker buildx build
         --platform linux/amd64
+        --build-context ccache-seed=.ccache
         --cache-from type=local,src=.buildx-cache
         --cache-to   type=local,dest=.buildx-cache-new,mode=max
         --target final
         -t hello-service:ci
         --load
         .
-    - rm -rf .buildx-cache
-    - mv .buildx-cache-new .buildx-cache
+    # Export the builder-layer ccache so it can warm the next run
+    - docker buildx build
+        --platform linux/amd64
+        --build-context ccache-seed=.ccache
+        --cache-from type=local,src=.buildx-cache-new
+        --target ccache-export
+        --output type=local,dest=.ccache-new
+        .
+    - rm -rf .ccache && mv .ccache-new .ccache
+    - rm -rf .buildx-cache && mv .buildx-cache-new .buildx-cache
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
