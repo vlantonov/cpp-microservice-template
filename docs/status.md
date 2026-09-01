@@ -12,6 +12,22 @@
 
 ## Post-Release Patches (2026-09-01)
 
+### Patch 5 — CI build-time optimizations (`77dd8a9`, `82cb1a8`, `0d250fe`)
+
+QA: PASS (static/logical review, all checks green). Three `semver(patch)` commits on `dependabot/docker/ubuntu-26.04`:
+
+- **`77dd8a9`** — Persist ccache across CI runs. Added `ccache-seed` (`FROM scratch`, overridden by `--build-context ccache-seed=.ccache`) and `ccache-export` stages to the `Dockerfile`; `.gitlab-ci.yml` seeds the warm cache, runs an export build, and rotates `.ccache`/`.buildx-cache`. `ccache -s` stats printed for observability.
+- **`82cb1a8`** — Cache the Conan package store via `--mount=type=cache,target=/root/.conan2/p` on the `conan install` step so gRPC/protobuf/abseil aren't rebuilt from source on layer invalidation.
+- **`0d250fe`** — Removed `run-clang-tidy-18` from the `verified` stage; added a parallel `clang-tidy` job (same `docker` stage, `policy: pull`) that builds the `builder` target and lints via `docker run`, taking linting off the image-build critical path.
+
+**Files changed:** `Dockerfile`, `.gitlab-ci.yml`
+
+**Known trade-off:** on the first-ever pipeline (cold cache) `docker-build` and `clang-tidy` compile independently; converges from the second run onward.
+
+**Files changed:** `Dockerfile`, `.gitlab-ci.yml`
+
+---
+
 ### Patch 4 — `01fcb1e` — `Dockerfile` — fix versioned clang-tidy binary
 
 **Problem:** CI stage `verified` called `run-clang-tidy` which is not installed; `clang-tidy-18` provides `run-clang-tidy-18` only (exit code 127).
