@@ -91,8 +91,6 @@ COPY --from=builder /root/.cache/ccache /
 # ---------------------------------------------------------------------------
 FROM builder AS verified
 
-RUN run-clang-tidy-18 -p build/Release src/
-
 RUN ctest --test-dir build/Release --output-on-failure --parallel "$(nproc)"
 
 RUN mkdir /runtime && \

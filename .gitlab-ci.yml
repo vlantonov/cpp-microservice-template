@@ -58,3 +58,45 @@ docker-build:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# Runs in the same stage as docker-build so linting is off the critical path.
+clang-tidy:
+  stage: docker
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+    DOCKER_BUILDKIT: "1"
+  cache:
+    key:
+      files:
+        - Dockerfile
+        - conanfile.py
+      prefix: "docker"
+    paths:
+      - .buildx-cache
+      - .ccache
+    policy: pull  # populated by docker-build; read-only here
+  script:
+    - mkdir -p .ccache
+    - docker info
+    - docker context inspect ci-context >/dev/null 2>&1 || docker context create ci-context --docker "host=${DOCKER_HOST},ca=${DOCKER_CERT_PATH}/ca.pem,cert=${DOCKER_CERT_PATH}/cert.pem,key=${DOCKER_CERT_PATH}/key.pem"
+    - docker buildx create --name ci-builder --use ci-context || docker buildx use ci-builder
+    - docker buildx build
+        --platform linux/amd64
+        --build-context ccache-seed=.ccache
+        --cache-from type=local,src=.buildx-cache
+        --target builder
+        -t hello-service:builder
+        --load
+        .
+    - docker run --rm hello-service:builder run-clang-tidy-18 -p build/Release src/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
