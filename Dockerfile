@@ -45,7 +45,9 @@ FROM toolchain AS conan-deps
 COPY conanfile.py CMakeLists.txt CMakePresets.json ./
 COPY conan ./conan
 
-RUN conan install . \
+# Cache Conan package store across invalidations (warm when builder persists).
+RUN --mount=type=cache,target=/root/.conan2/p,id=conan-cache \
+    conan install . \
         --profile:host conan/profiles/linux-clang18 \
         --profile:build conan/profiles/linux-clang18 \
         --build=missing \
