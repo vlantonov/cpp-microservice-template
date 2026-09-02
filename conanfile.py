@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from conan import ConanFile
 from conan.tools.cmake import cmake_layout, CMakeToolchain, CMakeDeps
@@ -111,3 +112,46 @@ class CppMicroserviceTemplateConan(ConanFile):
 
         deps = CMakeDeps(self)
         deps.generate()
+
+        # gRPC/1.69.0 on ubuntu:26.04 can generate stale component entries such as
+        # grpcpp_channelz and grpc++_alts even when the corresponding libraries are
+        # not produced. These entries cause CMake's conan_package_library_targets()
+        # to abort during find_package(gRPC). Strip them before the project configures.
+        generator_dir = Path(self.generators_folder)
+        stale = [
+            'gRPC::grpcpp_channelz',
+            'gRPC::grpc++_reflection',
+            'gRPC::grpc++_error_details',
+            'gRPC::grpc++_alts',
+            'grpcpp_channelz',
+            'grpc++_reflection',
+            'grpc++_error_details',
+            'grpc++_alts',
+        ]
+
+        target_file = generator_dir / 'gRPC-Target-release.cmake'
+        if target_file.exists():
+            text = target_file.read_text()
+            for component in [
+                'gRPC::grpcpp_channelz',
+                'gRPC::grpc++_reflection',
+                'gRPC::grpc++_error_details',
+                'gRPC::grpc++_alts',
+            ]:
+                marker = f'    ########## COMPONENT {component} #############'
+                start = text.find(marker)
+                while start != -1:
+                    end = text.find('\n    ########## COMPONENT ', start + len(marker))
+                    if end == -1:
+                        end = len(text)
+                    text = text[:start] + text[end:]
+                    start = text.find(marker)
+            for item in stale:
+                text = text.replace(item, '')
+            target_file.write_text(text)
+
+        for data_file in generator_dir.glob('gRPC-release-*-data.cmake'):
+            text = data_file.read_text()
+            for item in stale:
+                text = text.replace(item, '')
+            data_file.write_text(text)
