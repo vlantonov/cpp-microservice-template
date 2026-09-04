@@ -3,7 +3,7 @@
 # =============================================================================
 # Multi-stage Dockerfile
 #
-# Stage 1 (toolchain):  ubuntu:24.04 - installs Conan 2 + C++ build tools.
+# Stage 1 (toolchain):  ubuntu:26.04 - installs Conan 2 + C++ build tools.
 # Stage 2 (conan-deps): cache-stable dependency resolution layer.
 # Stage 3 (builder):    configure + compile with ccache.
 # Stage 4 (verified):   run unit tests and collect runtime artifacts.
@@ -13,14 +13,14 @@
 # ---------------------------------------------------------------------------
 # Stage 1: Toolchain
 # ---------------------------------------------------------------------------
-FROM ubuntu:24.04 AS toolchain
+FROM ubuntu:26.04 AS toolchain
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         make \
-        clang \
-        clang-tidy \
+        clang-18 \
+        clang-tidy-18 \
         lld \
         ccache \
         python3-pip \
@@ -73,7 +73,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache,id=ccache-obj-cache \
 # ---------------------------------------------------------------------------
 FROM builder AS verified
 
-RUN run-clang-tidy -p build/Release src/
+RUN run-clang-tidy-18 -p build/Release src/
 
 RUN ctest --test-dir build/Release --output-on-failure --parallel "$(nproc)"
 

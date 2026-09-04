@@ -44,5 +44,6 @@ docker-build:
     - rm -rf .buildx-cache
     - mv .buildx-cache-new .buildx-cache
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # - if: '$CI_COMMIT_BRANCH == "main"'
+    # - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - when: manual
